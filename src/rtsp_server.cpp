@@ -22,7 +22,7 @@ bool start_rtsp_server(const char* port) {
 
     factory = gst_rtsp_media_factory_new();
 
-    gst_rtsp_media_factory_set_launch(factory, "(libcamerasrc ! video/x-raw,format=YUY2,width=640,height=480,framerate=45/1 ! videoconvert ! x264enc ! rtph264pay name=pay0 pt=96 )");
+    gst_rtsp_media_factory_set_launch(factory, "(libcamerasrc ! video/x-raw,format=YUY2,width=640,height=480,framerate=45/1 ! videoconvert ! video/x-raw,format=I420 ! x264enc ! rtph264pay name=pay0 pt=96 )");
 
     gst_rtsp_mount_points_add_factory(mounts, "/test", factory);
 
