@@ -12,8 +12,16 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(GST REQUIRED gstreamer-1.0)
 pkg_check_modules(GSTRTSP REQUIRED gstreamer-rtsp-server-1.0)
 
+include_directories(${CMAKE_SOURCE_DIR}/include)
+
+set(SOURCES
+    ${CMAKE_SOURCE_DIR}/main.cpp
+    ${CMAKE_SOURCE_DIR}/src/rtsp_server.cpp
+    ${CMAKE_SOURCE_DIR}/src/gst_util.cpp
+)
+
 # 실행 파일 생성
-add_executable(RPI_mini_VMS_client main.cpp)
+add_executable(RPI_mini_VMS_client ${SOURCES})
 
 # GStreamer 및 GStreamer RTSP Server 라이브러리 포함
 target_include_directories(RPI_mini_VMS_client PRIVATE ${GST_INCLUDE_DIRS} ${GSTRTSP_INCLUDE_DIRS})
