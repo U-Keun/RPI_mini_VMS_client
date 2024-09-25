@@ -14,6 +14,7 @@ bool initialize_gstreamer(int argc, char** argv) {
     
     if (!g_option_context_parse(optctx, &argc, &argv, &error)) {
         cerr << "Error parsing options: " << error->message << endl;
+        g_error_free(error);
         g_option_context_free(optctx);
         return false;
     }
