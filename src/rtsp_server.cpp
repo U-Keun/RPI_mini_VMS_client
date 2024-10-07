@@ -5,8 +5,9 @@
 
 using namespace std;
 
+GMainLoop* loop = nullptr;
+
 bool start_rtsp_server(const char* port) {
-    GMainLoop *loop;
     GstRTSPServer *server;
     GstRTSPMountPoints *mounts;
     GstRTSPMediaFactory *factory;
@@ -38,6 +39,16 @@ bool start_rtsp_server(const char* port) {
     g_main_loop_run(loop);
 
     g_main_loop_unref(loop);
+	loop = nullptr;
 
     return true;
+}
+
+void stop_rtsp_server() {
+	if (loop) {
+        cout << "Stopping RTSP server...\n";
+        g_main_loop_quit(loop);
+    } else {
+        cerr << "RTSP server is not running.\n";
+    }
 }
