@@ -21,11 +21,6 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-	queue<string> ports;
-	ports.push("8554");
-	ports.push("8555");
-	ports.push("8556");
-
     Server svr;
 	svr.Post("/cam", [&](const Request& req, Response& res) {
 		CharReaderBuilder reader;
@@ -37,22 +32,12 @@ int main(int argc, char** argv) {
 
 		if (parseFromStream(reader, s, &root, &errs)) {
 			if (root["cam"] == "on") {
-				if (ports.empty()) {
-					cout << "Not enough port..\n";
-					return 0;
-				}
-
-				const char* port = ports.front().c_str();
-
-				if (!start_rtsp_server(port)) {
+				if (!start_rtsp_server(DEFAULT_RTSP_PORT)) {
 					cerr << "Failed to start RTSP server.\n";
 					return -1;
 				}	
-
-				ports.pop();
 			} else if (root["cam"] == "off") {
-				cout << "let us stop the server!\n";
-				// stop_rtsp_server();
+				stop_rtsp_server();
 			}
 		}
 
@@ -62,6 +47,7 @@ int main(int argc, char** argv) {
 		string jsonResponse = writeString(writer, response);
 
 		res.set_content(jsonResponse, "application/json");
+		return 0;
     });
 
     svr.listen("0.0.0.0", 8080);

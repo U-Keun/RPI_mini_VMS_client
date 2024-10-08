@@ -33,7 +33,8 @@ add_executable(RPI_mini_VMS_client ${SOURCES})
 target_include_directories(RPI_mini_VMS_client PRIVATE ${GST_INCLUDE_DIRS} ${GSTRTSP_INCLUDE_DIRS})
 
 # 라이브러리 연결
-target_link_libraries(RPI_mini_VMS_client ${GST_LIBRARIES} ${GSTRTSP_LIBRARIES} jsoncpp)
-
-# 컴파일러 경고를 포함한 추가 옵션 (선택 사항)
-target_compile_options(RPI_mini_VMS_client PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(RPI_mini_VMS_client
+    ${GST_LIBRARIES}
+    ${GSTRTSP_LIBRARIES}
+    jsoncpp
+)

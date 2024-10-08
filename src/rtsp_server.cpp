@@ -1,5 +1,7 @@
 #include <gst/gst.h>
 #include <gst/rtsp-server/rtsp-server.h>
+#include <gio/gio.h>
+#include <sys/socket.h>
 #include <iostream>
 #include <pthread.h>
 
@@ -7,52 +9,53 @@
 
 using namespace std;
 
+GMainLoop* loop = nullptr;
+GstRTSPServer* server = nullptr;
+
 void* start_rtsp_server_thread(void* arg) {
-	server_data* data = static_cast<server_data*>(arg);
-	GstRTSPServer *server;
+	const char* port = static_cast<const char*>(arg);
     GstRTSPMountPoints *mounts;
     GstRTSPMediaFactory *factory;
 
-    cout << "RTSP Server starting on port " << data->port << '\n';
+    cout << "RTSP Server starting on port " << port << '\n';
 
-	data->loop = g_main_loop_new(NULL, FALSE);
-
+	loop = g_main_loop_new(NULL, FALSE);
 	server = gst_rtsp_server_new();
-    g_object_set(server, "service", data->port, NULL);
+    g_object_set(server, "service", port, NULL);
 
     mounts = gst_rtsp_server_get_mount_points(server);
-
     factory = gst_rtsp_media_factory_new();
 
     gst_rtsp_media_factory_set_launch(factory, "(libcamerasrc ! video/x-raw,format=YUY2,width=640,height=480,framerate=45/1 ! videoconvert ! video/x-raw,format=I420 ! x264enc ! rtph264pay name=pay0 pt=96 )");
 
+	gst_rtsp_media_factory_set_shared(factory, TRUE);
     gst_rtsp_mount_points_add_factory(mounts, "/test", factory);
-
     g_object_unref(mounts);
 
 	if (gst_rtsp_server_attach(server, NULL) == 0) {
-		cerr << "Failed to attach the server on port " << data->port << "\n";
-        g_main_loop_unref(data->loop);
+		cerr << "Failed to attach the server on port " << port << "\n";
+		g_object_unref(server);
+        g_main_loop_unref(loop);
         return nullptr;
 	}
 
-	cout << "Stream ready at rtsp://RPI_IP_Address:" << data->port << "/test\n";
+	cout << "Stream ready at rtsp://RPI_IP_Address:" << port << "/test\n";
 
-    g_main_loop_run(data->loop);
+    g_main_loop_run(loop);
 
-    g_main_loop_unref(data->loop);
-    data->loop = nullptr;
+	g_object_unref(server);
+    g_main_loop_unref(loop);
+    server = nullptr;
+    loop = nullptr;
 
     return nullptr;
 }
 
 bool start_rtsp_server(const char* port) {
-	server_data* data = new server_data{ nullptr, port };
 	pthread_t thread_id;
 
-	if (pthread_create(&thread_id, nullptr, start_rtsp_server_thread, data) != 0) {
+	if (pthread_create(&thread_id, nullptr, start_rtsp_server_thread, (void*)port) != 0) {
         cerr << "Failed to create thread for RTSP server\n";
-        delete data;
         return false;
     }	
 
@@ -61,10 +64,10 @@ bool start_rtsp_server(const char* port) {
     return true;
 }
 
-void stop_rtsp_server(server_data* data) {
-	if (data && data->loop) {
-		cout << "Stopping RTSP Server on port " << data->port << '\n';
-        g_main_loop_quit(data->loop);
+void stop_rtsp_server() {
+	if (loop) {
+		cout << "Stopping RTSP Server.\n";
+        g_main_loop_quit(loop);
     } else {
         cerr << "RTSP server is not running.\n";
     }
