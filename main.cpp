@@ -1,6 +1,8 @@
 #include <iostream>
 #include <pthread.h>
 #include <json/json.h>
+#include <queue>
+#include <string>
 
 #include "rtsp_server.h"
 #include "gst_util.h"
@@ -12,11 +14,20 @@ using namespace Json;
 
 #define DEFAULT_RTSP_PORT "8554"
 
-void* http_server_thread(void* arg) {
-	const char* port = DEFAULT_RTSP_PORT;
-    Server svr;
+int main(int argc, char** argv) {
+    // GStreamer 초기화
+    if (!initialize_gstreamer(argc, argv)) {
+        cerr << "GStreamer initialization failed.\n";
+        return -1;
+    }
 
-    svr.Post("/cam", [=](const Request& req, Response& res) {
+	queue<string> ports;
+	ports.push("8554");
+	ports.push("8555");
+	ports.push("8556");
+
+    Server svr;
+	svr.Post("/cam", [&](const Request& req, Response& res) {
 		CharReaderBuilder reader;
 		Value root;
 		string errs;
@@ -26,12 +37,22 @@ void* http_server_thread(void* arg) {
 
 		if (parseFromStream(reader, s, &root, &errs)) {
 			if (root["cam"] == "on") {
+				if (ports.empty()) {
+					cout << "Not enough port..\n";
+					return 0;
+				}
+
+				const char* port = ports.front().c_str();
+
 				if (!start_rtsp_server(port)) {
 					cerr << "Failed to start RTSP server.\n";
 					return -1;
 				}	
+
+				ports.pop();
 			} else if (root["cam"] == "off") {
-				stop_rtsp_server();
+				cout << "let us stop the server!\n";
+				// stop_rtsp_server();
 			}
 		}
 
@@ -44,23 +65,5 @@ void* http_server_thread(void* arg) {
     });
 
     svr.listen("0.0.0.0", 8080);
-    return nullptr;
-}
-
-int main(int argc, char** argv) {
-    // GStreamer 초기화
-    if (!initialize_gstreamer(argc, argv)) {
-        cerr << "GStreamer initialization failed.\n";
-        return -1;
-    }
-
-	pthread_t http_thread;
-	if (pthread_create(&http_thread, nullptr, http_server_thread, nullptr)) {
-        cerr << "Failed to create HTTP server thread.\n";
-        return -1;
-    }	
-
-	pthread_join(http_thread, nullptr);
-
 	return 0;
 }

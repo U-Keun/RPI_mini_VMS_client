@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.10)
 project(RPI_mini_VMS_client VERSION 1.0)
 
 # C++ 표준 설정
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # GStreamer 패키지를 찾음
