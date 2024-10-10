@@ -1,16 +1,10 @@
 #include <iostream>
-#include <pthread.h>
-#include <json/json.h>
-#include <queue>
-#include <string>
 
-#include "rtsp_server.h"
 #include "gst_util.h"
-#include "httplib.h"
+#include "rtsp_server.h"
+#include "http_server.h"
 
 using namespace std;
-using namespace httplib;
-using namespace Json;
 
 #define DEFAULT_RTSP_PORT "8554"
 
@@ -21,36 +15,13 @@ int main(int argc, char** argv) {
         return -1;
     }
 	
+	// RTSP 서버 시작
 	if (!start_rtsp_server(DEFAULT_RTSP_PORT)) {
         cerr << "Failed to start RTSP server.\n";
         return -1;
-    }	
+    }
 
-	Server svr;
-    svr.Post("/cam", [&](const Request& req, Response& res) {
-        CharReaderBuilder reader;
-        Value root;
-        string errs;
+	start_http_server();
 
-        const string body = req.body;
-        istringstream s(body);
-
-        if (parseFromStream(reader, s, &root, &errs)) {
-            if (root["camera"] == "on") {
-                start_streaming();
-            } else if (root["camera"] == "off") {
-                stop_streaming();
-            }
-        }
-
-        Value response;
-        response["message"] = "received";
-        StreamWriterBuilder writer;
-        string jsonResponse = writeString(writer, response);
-
-        res.set_content(jsonResponse, "application/json");
-    });
-
-    svr.listen("0.0.0.0", 8080);
 	return 0;
 }
