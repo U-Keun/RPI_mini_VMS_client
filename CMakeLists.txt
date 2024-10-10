@@ -23,6 +23,7 @@ include_directories(/usr/include/jsoncpp)
 set(SOURCES
     ${CMAKE_SOURCE_DIR}/main.cpp
     ${CMAKE_SOURCE_DIR}/src/rtsp_server.cpp
+	${CMAKE_SOURCE_DIR}/src/http_server.cpp
     ${CMAKE_SOURCE_DIR}/src/gst_util.cpp
 )
 
