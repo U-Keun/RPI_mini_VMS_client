@@ -36,9 +36,9 @@ int main(int argc, char** argv) {
         istringstream s(body);
 
         if (parseFromStream(reader, s, &root, &errs)) {
-            if (root["cam"] == "on") {
+            if (root["camera"] == "on") {
                 start_streaming();
-            } else if (root["cam"] == "off") {
+            } else if (root["camera"] == "off") {
                 stop_streaming();
             }
         }
