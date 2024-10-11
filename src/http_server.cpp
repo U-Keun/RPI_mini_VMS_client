@@ -2,6 +2,9 @@
 #include "httplib.h"
 #include <iostream>
 
+#include <unistd.h>
+#include <sys/syscall.h>
+
 #include "http_server.h"
 #include "rtsp_server.h"
 
@@ -10,6 +13,10 @@ using namespace httplib;
 using namespace Json;
 
 #define PORT 8080
+#define GPIO_CONTROL 454
+#define GPIO_LED 18
+#define ON 1
+#define OFF 0
 
 void check_cam_status(Server&);
 void register_camera(Server&);
@@ -70,9 +77,11 @@ void control_camera(Server& server) {
 			if (root["camera"] == "on") {
 				start_streaming();
 				streaming_on = true;
+				syscall(GPIO_CONTROL, GPIO_LED, ON);
 			} else if (root["camera"] == "off") {
 				stop_streaming();
 				streaming_on = false;
+				syscall(GPIO_CONTROL, GPIO_LED, OFF);
 			}
 		}
 
