@@ -4,6 +4,9 @@
 
 #include <unistd.h>
 #include <sys/syscall.h>
+#include <signal.h>
+#include <sys/ioctl.h>
+#include <fcntl.h>
 
 #include "http_server.h"
 #include "rtsp_server.h"
@@ -17,6 +20,7 @@ using namespace Json;
 #define GPIO_LED 18
 #define ON 1
 #define OFF 0
+#define MYPID _IO(100, 1)
 
 void check_cam_status(Server&);
 void register_camera(Server&);
@@ -24,7 +28,43 @@ void control_camera(Server&);
 
 bool streaming_on = false;
 
+void sigio_handler(int signo, siginfo_t *info, void *context) {
+	cout << "SIGIO is called\n";
+
+	if (streaming_on) {
+		streaming_on = false;
+		syscall(GPIO_CONTROL, GPIO_LED, OFF);
+		stop_streaming();
+	} else {
+		streaming_on = true;
+		syscall(GPIO_CONTROL, GPIO_LED, ON);
+		start_streaming();
+	}
+}
+
 void start_http_server() {
+
+	struct sigaction sa;
+
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_sigaction = sigio_handler;
+	sa.sa_flags = SA_SIGINFO;
+
+	if (sigaction(SIGIO, &sa, NULL) == -1) {
+		perror("sigaction");
+		return;
+	}
+
+	int fd;
+	fd = open("/dev/gpiobutton", O_RDWR);
+	if (fd < 0) {
+		perror("/dev/gpiobutton error");
+		return;
+	}
+	
+	pid_t mypid = getpid();
+	ioctl(fd, MYPID, mypid);
+
 	Server server;
 
 	// GET request
