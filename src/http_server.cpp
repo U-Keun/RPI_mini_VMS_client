@@ -32,13 +32,13 @@ void sigio_handler(int signo, siginfo_t *info, void *context) {
 	cout << "SIGIO is called\n";
 
 	if (streaming_on) {
+		stop_streaming();
 		streaming_on = false;
 		syscall(GPIO_CONTROL, GPIO_LED, OFF);
-		stop_streaming();
 	} else {
+		start_streaming();
 		streaming_on = true;
 		syscall(GPIO_CONTROL, GPIO_LED, ON);
-		start_streaming();
 	}
 }
 
