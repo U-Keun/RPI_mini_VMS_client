@@ -49,7 +49,7 @@ bool start_rtsp_server(const char* port) {
 
     g_signal_connect(factory, "media-configure", G_CALLBACK(media_configure), NULL);
 
-    gst_rtsp_mount_points_add_factory(mounts, "/test", factory);
+    gst_rtsp_mount_points_add_factory(mounts, "/stream", factory);
     g_object_unref(mounts);
 
     if (gst_rtsp_server_attach(server, NULL) == 0) {
@@ -57,7 +57,7 @@ bool start_rtsp_server(const char* port) {
         return false;
     }
 	
-	cout << "Stream ready at rtsp://<RPI_IP_Address>:" << port << "/test\n";
+	cout << "Stream ready at rtsp://<RPI_IP_Address>:" << port << "/stream\n";
 
     thread main_loop_thread([]() {
         g_main_loop_run(loop);
