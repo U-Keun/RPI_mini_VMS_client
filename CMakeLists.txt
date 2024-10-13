@@ -15,23 +15,24 @@ pkg_check_modules(GSTRTSP REQUIRED gstreamer-rtsp-server-1.0)
 # jsoncpp 패키지를 찾음
 find_package(jsoncpp REQUIRED)
 
-include_directories(${CMAKE_SOURCE_DIR}/include)
-include_directories(${GST_INCLUDE_DIRS})
-include_directories(${GSTRTSP_INCLUDE_DIRS})
-include_directories(/usr/include/jsoncpp)
-
 set(SOURCES
     ${CMAKE_SOURCE_DIR}/main.cpp
     ${CMAKE_SOURCE_DIR}/src/rtsp_server.cpp
 	${CMAKE_SOURCE_DIR}/src/http_server.cpp
     ${CMAKE_SOURCE_DIR}/src/gst_util.cpp
+    ${CMAKE_SOURCE_DIR}/src/camera_controller.cpp
 )
 
 # 실행 파일 생성
 add_executable(RPI_mini_VMS_client ${SOURCES})
 
 # GStreamer 및 GStreamer RTSP Server 라이브러리 포함
-target_include_directories(RPI_mini_VMS_client PRIVATE ${GST_INCLUDE_DIRS} ${GSTRTSP_INCLUDE_DIRS})
+target_include_directories(RPI_mini_VMS_client PRIVATE 
+	${CMAKE_SOURCE_DIR}/include
+	${GST_INCLUDE_DIRS} 
+	${GSTRTSP_INCLUDE_DIRS}
+	/usr/include/jsoncpp
+)
 
 # 라이브러리 연결
 target_link_libraries(RPI_mini_VMS_client
