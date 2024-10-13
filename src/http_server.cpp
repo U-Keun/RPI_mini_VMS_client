@@ -1,86 +1,71 @@
-#include <json/json.h>
-#include "httplib.h"
 #include <iostream>
 
 #include "http_server.h"
-#include "rtsp_server.h"
+#include "camera_controller.h"
 
-using namespace std;
 using namespace httplib;
 using namespace Json;
+using namespace std;
 
-#define PORT 8080
+HTTPServer::HTTPServer(int port, CameraController& camera_controller)
+	: port(port), camera_controller(camera_controller) {}
 
-void check_cam_status(Server&);
-void register_camera(Server&);
-void control_camera(Server&);
-
-bool streaming_on = false;
-
-void start_http_server() {
-	Server server;
-
-	// GET request
-	check_cam_status(server);
-
-	// POST request
-	register_camera(server);
-	control_camera(server);
-
-	server.listen("0.0.0.0", PORT);
+void HTTPServer::start() {
+	setupRoutes();
+	server.listen("0.0.0.0", port);
 }
 
-void check_cam_status(Server& server) {
-	server.Get("/cam-status", [](const Request& req, Response& res) {
-		Value response;
-		if (streaming_on) {
-			response["message"] = "running";
-		} else response["message"] = "stopped";
-		StreamWriterBuilder writer;
-		string jsonResponse = writeString(writer, response);
-
-		res.set_content(jsonResponse, "application/json");
+void HTTPServer::setupRoutes() {
+	server.Get("/cam-status", [this](const Request& req, Response& res) {
+		getCamStatus(req, res);
+	});
+	server.Post("/register", [this](const Request& req, Response& res) {
+		postRegisterCamera(req, res);
+	});
+	server.Post("/cam", [this](const Request& req, Response& res) {
+		postControlCamera(req, res);
 	});
 }
 
-void register_camera(Server& server) {
-	server.Post("/register", [](const Request& req, Response& res) {
-		Value response;
-		response["message"] = "registered";
-		response["name"] = "U-Keun";
-		response["port"] = "8554";
-		response["mount"] = "/stream";
-		StreamWriterBuilder writer;
-		string jsonResponse = writeString(writer, response);
-
-		res.set_content(jsonResponse, "application/json");
-	});
+void HTTPServer::getCamStatus(const Request& req, Response& res) {
+	Value response = camera_controller.getStatus();
+	StreamWriterBuilder writer;
+	string jsonResponse = writeString(writer, response);
+	res.set_content(jsonResponse, "application/json");
 }
 
-void control_camera(Server& server) {
-	server.Post("/cam", [](const Request& req, Response& res) {
-		CharReaderBuilder reader;
-		Value root;
-		string errs;
+void HTTPServer::postRegisterCamera(const Request& req, Response& res) {
+	Value response = camera_controller.registerCamera();
+	StreamWriterBuilder writer;
+	string jsonResponse = writeString(writer, response);
+	res.set_content(jsonResponse, "application/json");
+}
+
+void HTTPServer::postControlCamera(const Request& req, Response& res) {
+	CharReaderBuilder reader;
+	Value root;
+	string errs;
 		
-		const string body = req.body;
-		istringstream s(body);
+	const string body = req.body;
+	istringstream s(body);
 
-		if (parseFromStream(reader, s, &root, &errs)) {
-			if (root["camera"] == "on") {
-				start_streaming();
-				streaming_on = true;
-			} else if (root["camera"] == "off") {
-				stop_streaming();
-				streaming_on = false;
-			}
+	if (parseFromStream(reader, s, &root, &errs)) {
+		if (root["camera"] == "on") {
+			camera_controller.startStreaming();
+		} else if (root["camera"] == "off") {
+			camera_controller.stopStreaming();
+		} else {
+			res.status = 400;
+			return;
 		}
+	} else {
+		res.status = 400;
+		return;
+	}
 
-		Value response;
-		response["message"] = "success";
-		StreamWriterBuilder writer;
-		string jsonResponse = writeString(writer, response);
-
-		res.set_content(jsonResponse, "application/json");
-	});
+	Value response;
+	response["message"] = "success";
+	StreamWriterBuilder writer;
+	string jsonResponse = writeString(writer, response);
+	res.set_content(jsonResponse, "application/json");
 }
