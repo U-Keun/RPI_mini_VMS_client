@@ -7,7 +7,7 @@
 
 using namespace std;
 
-#define DEFAULT_RTSP_PORT "8554"
+#define RTSP_PORT "8554"
 #define HTTP_PORT 8080
 
 int main(int argc, char** argv) {
@@ -16,14 +16,9 @@ int main(int argc, char** argv) {
         cerr << "GStreamer initialization failed.\n";
         return -1;
     }
-	
-	// RTSP 서버 시작
-	if (!start_rtsp_server(DEFAULT_RTSP_PORT)) {
-        cerr << "Failed to start RTSP server.\n";
-        return -1;
-    }
 
-	CameraController camera_controller;
+	RTSPServer camera(RTSP_PORT);
+	CameraController camera_controller(camera);
 	HTTPServer server(HTTP_PORT, camera_controller);
 	server.start();
 

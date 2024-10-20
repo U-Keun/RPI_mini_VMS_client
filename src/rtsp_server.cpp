@@ -1,25 +1,28 @@
-#include <gst/gst.h>
-#include <gst/rtsp-server/rtsp-server.h>
 #include <iostream>
 #include <thread>
-#include <mutex>
 
 #include "rtsp_server.h"
 
 using namespace std;
 
-GMainLoop* loop = nullptr;
-GstRTSPServer* server = nullptr;
-GstRTSPMediaFactory* factory = nullptr;
-GstRTSPMedia* media = nullptr;
-bool is_streaming = false;
-mutex media_mutex;
+RTSPServer::RTSPServer(const char* port) 
+: loop(nullptr), server(nullptr), factory(nullptr), media(nullptr), is_streaming(false), port(port) {}
 
-static void media_configure(GstRTSPMediaFactory* factory, GstRTSPMedia* new_media, gpointer user_data) {
+RTSPServer::~RTSPServer() {
+	stop();
+}
+
+void RTSPServer::on_media_unprepared(GstRTSPMedia* unprepared_media, gpointer user_data) {
+	auto* self = static_cast<RTSPServer*>(user_data);
+	lock_guard<mutex> lock(self->media_mutex);
+	if (self->media == unprepared_media) self->media = nullptr;
+}
+
+void RTSPServer::media_configure(GstRTSPMediaFactory* factory, GstRTSPMedia* new_media) {
 	lock_guard<mutex> lock(media_mutex);
 	media = new_media;
 
-    GstElement* element = gst_rtsp_media_get_element(media);
+	GstElement* element = gst_rtsp_media_get_element(media);
 
     if (!is_streaming) {
         gst_element_set_state(element, GST_STATE_PLAYING);
@@ -29,13 +32,10 @@ static void media_configure(GstRTSPMediaFactory* factory, GstRTSPMedia* new_medi
 
     gst_object_unref(element);
 
-	g_signal_connect(media, "unprepared", G_CALLBACK(+[](GstRTSPMedia* unprepared_media, gpointer user_data) {
-		lock_guard<mutex> lock(media_mutex);
-		if (media == unprepared_media) media = nullptr;
-	}), nullptr);
+	g_signal_connect(media, "unprepared", G_CALLBACK(&RTSPServer::on_media_unprepared), this);
 }
 
-bool start_rtsp_server(const char* port) {
+void RTSPServer::start() {
 	loop = g_main_loop_new(NULL, FALSE);
 
     server = gst_rtsp_server_new();
@@ -45,29 +45,28 @@ bool start_rtsp_server(const char* port) {
     factory = gst_rtsp_media_factory_new();
 
 	gst_rtsp_media_factory_set_launch(factory, "(libcamerasrc ! video/x-raw,format=YUY2,width=640,height=480,framerate=45/1 ! videoconvert ! video/x-raw,format=I420 ! x264enc ! rtph264pay name=pay0 pt=96 )");
+
     gst_rtsp_media_factory_set_shared(factory, TRUE);
 
-    g_signal_connect(factory, "media-configure", G_CALLBACK(media_configure), NULL);
+    g_signal_connect(factory, "media-configure", G_CALLBACK(media_configure_callback), this);
 
     gst_rtsp_mount_points_add_factory(mounts, "/stream", factory);
     g_object_unref(mounts);
 
     if (gst_rtsp_server_attach(server, NULL) == 0) {
         cerr << "Failed to attach the server on port " << port << "\n";
-        return false;
+        exit(1);
     }
 	
 	cout << "Stream ready at rtsp://<RPI_IP_Address>:" << port << "/stream\n";
 
-    thread main_loop_thread([]() {
+    thread main_loop_thread([this]() {
         g_main_loop_run(loop);
     });
     main_loop_thread.detach();
-
-    return true;
 }
 
-void start_streaming() {
+void RTSPServer::start_streaming() {
     if (!is_streaming) {
         cout << "Starting streaming.\n";
         is_streaming = true;
@@ -83,7 +82,7 @@ void start_streaming() {
     }
 }
 
-void stop_streaming() {
+void RTSPServer::stop_streaming() {
     if (is_streaming) {
         cout << "Stopping streaming.\n";
         is_streaming = false;
@@ -99,7 +98,7 @@ void stop_streaming() {
     }
 }
 
-void stop_rtsp_server() {
+void RTSPServer::stop() {
     if (loop) {
         cout << "Stopping RTSP Server.\n";
         g_main_loop_quit(loop);

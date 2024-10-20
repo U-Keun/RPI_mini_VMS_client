@@ -1,15 +1,17 @@
 #include "camera_controller.h"
 #include "rtsp_server.h"
 
-CameraController::CameraController() : streaming_on(false) {}
+CameraController::CameraController(RTSPServer& camera) : camera(camera), streaming_on(false) {
+	camera.start();
+}
 
 void CameraController::startStreaming() {
-	start_streaming();
+	camera.start_streaming();
 	streaming_on = true;
 }
 
 void CameraController::stopStreaming() {
-	stop_streaming();
+	camera.stop_streaming();
 	streaming_on = false;
 }
 
